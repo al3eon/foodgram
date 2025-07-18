@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator
 from django.db import models
 
 User = get_user_model()
@@ -20,7 +21,7 @@ class Tag(models.Model):
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=40)
-    units = models.ForeignKey(
+    measurement_unit = models.ForeignKey(
         Units,
         on_delete=models.PROTECT,
         related_name='ingredients'
@@ -30,14 +31,13 @@ class Ingredient(models.Model):
         return f'{self.name} ({self.units})'
 
 
-
 class Recipe(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='recipes'
     )
-    name = models.CharField(max_length=70)
+    name = models.CharField(max_length=256)
     image = models.ImageField(upload_to='recipes')
     text = models.TextField()
     tags = models.ManyToManyField(
@@ -45,7 +45,7 @@ class Recipe(models.Model):
         through='RecipeTag',
         related_name='recipes'
     )
-    time = models.IntegerField()
+    cooking_time = models.IntegerField(validators=[MinValueValidator(1)])
 
     def __str__(self):
         return self.name[:30]
