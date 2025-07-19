@@ -4,6 +4,7 @@ from django.db import models
 from .validators import username_validator
 
 
+
 LIMIT_EMAIL = 254
 LIMIT_USERNAME = 150
 OUTPUT_LENGTH = 30
@@ -59,3 +60,32 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username[:OUTPUT_LENGTH]
+
+
+class Subscription(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='subscriptions',
+        verbose_name='Подписчик'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='subscribers',
+        verbose_name='Автор'
+    )
+
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'author'], name='unique_subscription'),
+            models.CheckConstraint(
+                name='no_self_subscription',
+                check=~models.Q(user=models.F('author'))
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.user} -> {self.author}'

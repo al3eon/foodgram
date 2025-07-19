@@ -42,7 +42,6 @@ class Recipe(models.Model):
     text = models.TextField()
     tags = models.ManyToManyField(
         Tag,
-        through='RecipeTag',
         related_name='recipes'
     )
     cooking_time = models.IntegerField(validators=[MinValueValidator(1)])
