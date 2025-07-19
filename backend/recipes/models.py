@@ -14,9 +14,19 @@ class Units(models.Model):
 
 class Tag(models.Model):
     name = models.CharField(max_length=64)
+    slug = models.SlugField(
+        max_length=64,
+        unique=True,
+        verbose_name='Слаг',
+    )
+
+    class Meta:
+        verbose_name = 'Тег'
+        verbose_name_plural = 'Теги'
 
     def __str__(self):
         return self.name
+
 
 
 class Ingredient(models.Model):
@@ -60,7 +70,7 @@ class RecipeIngredient(models.Model):
         on_delete=models.PROTECT,
         related_name='used_in'
     )
-    count = models.IntegerField()
+    amount = models.IntegerField()
 
     class Meta:
         constraints = [
