@@ -23,10 +23,15 @@ class CustomUserCreateSerializer(UserCreateSerializer):
             'password'
         )
 
+class ShortRecipeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recipe
+        fields = ('id', 'name', 'image', 'cooking_time')
 
 class CustomUserSerializer(UserSerializer):
     is_subscribed = serializers.SerializerMethodField(read_only=True)
     avatar = serializers.ImageField(required=False, allow_null=True)
+    recipes = serializers.SerializerMethodField(read_only=True)
 
     class Meta(UserSerializer.Meta):
         model = User
@@ -37,7 +42,8 @@ class CustomUserSerializer(UserSerializer):
             'first_name',
             'last_name',
             'is_subscribed',
-            'avatar'
+            'avatar',
+            'recipes'
         )
 
     def get_is_subscribed(self, obj):
@@ -45,6 +51,11 @@ class CustomUserSerializer(UserSerializer):
         if request is None or request.user.is_anonymous:
             return False
         return Subscription.objects.filter(user=request.user, author=obj).exists()
+
+    def get_recipes(self, obj):
+        recipes = Recipe.objects.filter(author=obj)
+        serializer = ShortRecipeSerializer(recipes, many=True)
+        return serializer.data
 
 
 class AvatarSerializer(serializers.ModelSerializer):
@@ -155,3 +166,11 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 
     def get_is_favorited(self, obj):
         return False
+
+
+class IngredientSerializer(serializers.ModelSerializer):
+    measurement_unit = serializers.CharField(source='measurement_unit.name')
+
+    class Meta:
+        model = Ingredient
+        fields = ('id', 'name', 'measurement_unit')
