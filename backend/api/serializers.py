@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
 
-from recipes.models import Units, Tag, Ingredient, Recipe, RecipeIngredient
+from recipes.models import Units, Tag, Ingredient, Recipe, RecipeIngredient, ShoppingCart
 from users.models import Subscription
 
 User = get_user_model()
@@ -198,6 +198,9 @@ class RecipeReadSerializer(serializers.ModelSerializer):
                   'is_in_shopping_cart', 'is_favorited')
 
     def get_is_in_shopping_cart(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return ShoppingCart.objects.filter(user=request.user, recipe=obj).exists()
         return False
 
     def get_is_favorited(self, obj):
@@ -210,3 +213,14 @@ class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
         fields = ('id', 'name', 'measurement_unit')
+
+
+class ShoppingCartSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='recipe.id')
+    name = serializers.CharField(source='recipe.name')
+    image = serializers.ImageField(source='recipe.image')
+    cooking_time = serializers.IntegerField(source='recipe.cooking_time')
+
+    class Meta:
+        model = ShoppingCart
+        fields = ('id', 'name', 'image', 'cooking_time')

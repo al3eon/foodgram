@@ -3,6 +3,7 @@ import base64
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django_filters.rest_framework import DjangoFilterBackend
+from django.http import HttpResponse
 from djoser.views import UserViewSet
 from rest_framework.response import Response
 from rest_framework import status, viewsets
@@ -12,9 +13,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from api.serializers import (
     AvatarSerializer, CustomUserSerializer, IngredientSerializer,
-    RecipeReadSerializer, RecipeWriteSerializer, TagSerializer)
+    RecipeReadSerializer, RecipeWriteSerializer, TagSerializer, ShoppingCartSerializer)
 from api.filters import IngredientFilter, RecipeFilter
-from recipes.models import Tag, Recipe, Ingredient
+from recipes.models import Tag, Recipe, Ingredient, ShoppingCart
 
 User = get_user_model()
 
@@ -52,6 +53,54 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def shopping_cart(self, request, pk=None):
+        recipe = self.get_object()
+        user = request.user
+
+        if request.method == 'POST':
+            if ShoppingCart.objects.filter(user=user, recipe=recipe).exists():
+                return Response(
+                    {'errors': 'Рецепт уже в списке покупок'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            shopping_cart = ShoppingCart.objects.create(user=user, recipe=recipe)
+            serializer = ShoppingCartSerializer(shopping_cart, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        if request.method == 'DELETE':
+            shopping_cart = ShoppingCart.objects.filter(user=user, recipe=recipe)
+            if not shopping_cart.exists():
+                return Response(
+                    {'errors': 'Рецепт не в списке покупок'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            shopping_cart.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def download_shopping_cart(self, request):
+        user = request.user
+        recipes = Recipe.objects.filter(shopping_cart__user=user)
+        ingredient_totals = {}
+        for recipe in recipes:
+            for ingredient in recipe.ingredients.all():
+                key = (ingredient.ingredient.name, ingredient.ingredient.measurement_unit.name)
+                if key in ingredient_totals:
+                    ingredient_totals[key] += ingredient.amount
+                else:
+                    ingredient_totals[key] = ingredient.amount
+
+        shopping_list = []
+        for (name, unit), amount in ingredient_totals.items():
+            shopping_list.append(f"{name} ({unit}) — {amount}")
+
+        # Создаём текстовый файл
+        content = "\n".join(shopping_list)
+        response = HttpResponse(content, content_type='text/plain')
+        response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
+        return response
 
 
 class CustomUserViewSet(UserViewSet):
