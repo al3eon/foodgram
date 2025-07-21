@@ -2,10 +2,10 @@ import base64, os
 
 from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
-from djoser.serializers import UserCreateSerializer, UserSerializer
+from djoser.serializers import UserCreateSerializer, UserSerializer, SetPasswordSerializer
 from rest_framework import serializers
 
-from recipes.models import Units, Tag, Ingredient, Recipe, RecipeIngredient, ShoppingCart
+from recipes.models import Units, Tag, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Favorite
 from users.models import Subscription
 
 User = get_user_model()
@@ -204,6 +204,9 @@ class RecipeReadSerializer(serializers.ModelSerializer):
         return False
 
     def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return Favorite.objects.filter(user=request.user, recipe=obj).exists()
         return False
 
 
@@ -224,3 +227,22 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShoppingCart
         fields = ('id', 'name', 'image', 'cooking_time')
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='recipe.id')
+    name = serializers.CharField(source='recipe.name')
+    image = serializers.ImageField(source='recipe.image')
+    cooking_time = serializers.IntegerField(source='recipe.cooking_time')
+
+    class Meta:
+        model = Favorite
+        fields = ('id', 'name', 'image', 'cooking_time')
+
+
+class CustomSetPasswordSerializer(SetPasswordSerializer):
+    current_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+    def validate(self, data):
+        return data

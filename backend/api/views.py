@@ -13,9 +13,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from api.serializers import (
     AvatarSerializer, CustomUserSerializer, IngredientSerializer,
-    RecipeReadSerializer, RecipeWriteSerializer, TagSerializer, ShoppingCartSerializer)
+    RecipeReadSerializer, RecipeWriteSerializer, TagSerializer, ShoppingCartSerializer, FavoriteSerializer)
 from api.filters import IngredientFilter, RecipeFilter
-from recipes.models import Tag, Recipe, Ingredient, ShoppingCart
+from recipes.models import Tag, Recipe, Ingredient, ShoppingCart, Favorite
 
 User = get_user_model()
 
@@ -96,11 +96,35 @@ class RecipeViewSet(viewsets.ModelViewSet):
         for (name, unit), amount in ingredient_totals.items():
             shopping_list.append(f"{name} ({unit}) — {amount}")
 
-        # Создаём текстовый файл
         content = "\n".join(shopping_list)
         response = HttpResponse(content, content_type='text/plain')
         response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
         return response
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def favorite(self, request, pk=None):
+        recipe = self.get_object()
+        user = request.user
+
+        if request.method == 'POST':
+            if Favorite.objects.filter(user=user, recipe=recipe).exists():
+                return Response(
+                    {'errors': 'Рецепт уже в избранном'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            favorite = Favorite.objects.create(user=user, recipe=recipe)
+            serializer = FavoriteSerializer(favorite, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        if request.method == 'DELETE':
+            favorite = Favorite.objects.filter(user=user, recipe=recipe)
+            if not favorite.exists():
+                return Response(
+                    {'errors': 'Рецепт не в избранном'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            favorite.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CustomUserViewSet(UserViewSet):
