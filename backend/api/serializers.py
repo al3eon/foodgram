@@ -246,3 +246,28 @@ class CustomSetPasswordSerializer(SetPasswordSerializer):
 
     def validate(self, data):
         return data
+
+
+class SubscriptionSerializer(CustomUserSerializer):
+    recipes = serializers.SerializerMethodField()
+    recipes_count = serializers.SerializerMethodField()
+
+    class Meta(CustomUserSerializer.Meta):
+        fields = (
+            'email', 'id', 'username', 'first_name', 'last_name',
+            'is_subscribed', 'avatar', 'recipes', 'recipes_count'
+        )
+
+    def get_recipes(self, obj):
+        request = self.context.get('request')
+        recipes_limit = request.query_params.get('recipes_limit')
+        recipes = obj.recipes.all()
+        if recipes_limit:
+            try:
+                recipes = recipes[:int(recipes_limit)]
+            except ValueError:
+                pass
+        return ShortRecipeSerializer(recipes, many=True).data
+
+    def get_recipes_count(self, obj):
+        return obj.recipes.count()

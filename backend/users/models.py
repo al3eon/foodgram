@@ -4,7 +4,6 @@ from django.db import models
 from .validators import username_validator
 
 
-
 LIMIT_EMAIL = 254
 LIMIT_USERNAME = 150
 OUTPUT_LENGTH = 30
