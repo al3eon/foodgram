@@ -32,7 +32,6 @@ class Tag(models.Model):
         return self.name
 
 
-
 class Ingredient(models.Model):
     name = models.CharField(max_length=40)
     measurement_unit = models.ForeignKey(
@@ -63,13 +62,11 @@ class Recipe(models.Model):
     )
     cooking_time = models.IntegerField(validators=[MinValueValidator(1)])
 
-
     class Meta:
         ordering = ['name']
 
     def __str__(self):
         return self.name[:30]
-
 
 
 class RecipeIngredient(models.Model):
@@ -91,6 +88,7 @@ class RecipeIngredient(models.Model):
                 fields=['recipe', 'ingredient'],
             ),
         ]
+
     def __str__(self):
         return f'{self.ingredient.name[:30]}: {self.amount}'
 

@@ -23,10 +23,12 @@ class CustomUserCreateSerializer(UserCreateSerializer):
             'password'
         )
 
+
 class ShortRecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = ('id', 'name', 'image', 'cooking_time')
+
 
 class CustomUserSerializer(UserSerializer):
     is_subscribed = serializers.SerializerMethodField(read_only=True)
