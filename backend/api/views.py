@@ -14,7 +14,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from api.serializers import (
     AvatarSerializer, CustomUserSerializer, IngredientSerializer,
     RecipeReadSerializer, RecipeWriteSerializer, TagSerializer, ShoppingCartSerializer, FavoriteSerializer,
-    SubscriptionSerializer)
+    SubscriptionSerializer, UserListSerializer)
 from api.filters import IngredientFilter, RecipeFilter
 from recipes.models import Tag, Recipe, Ingredient, ShoppingCart, Favorite
 from users.models import Subscription
@@ -132,6 +132,16 @@ class RecipeViewSet(viewsets.ModelViewSet):
 class CustomUserViewSet(UserViewSet):
     queryset = User.objects.all()
     serializer_class = CustomUserSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return UserListSerializer
+        return super().get_serializer_class()
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [AllowAny(),]
+        return super().get_permissions()
 
     @action(detail=False, methods=['put'], permission_classes=[IsAuthenticated])
     def avatar(self, request):
