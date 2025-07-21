@@ -1,4 +1,4 @@
-import base64
+import base64, os
 
 from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
@@ -59,11 +59,27 @@ class CustomUserSerializer(UserSerializer):
 
 
 class AvatarSerializer(serializers.ModelSerializer):
-    avatar = serializers.ImageField()
+    avatar = serializers.ImageField(read_only=True)
+    avatar_input = serializers.ImageField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = User
-        fields = ('avatar',)
+        fields = ('avatar', 'avatar_input')
+
+    def validate_avatar_input(self, value):
+        if not value:
+            raise serializers.ValidationError('No avatar file provided.')
+        valid_extensions = ['.png', '.jpg', '.jpeg']
+        ext = os.path.splitext(value.name)[1].lower()
+        if ext not in valid_extensions:
+            raise serializers.ValidationError('Unsupported image format. Use PNG or JPEG.')
+        return value
+
+    def update(self, instance, validated_data):
+        if 'avatar_input' in validated_data and validated_data['avatar_input']:
+            instance.avatar = validated_data['avatar_input']
+            instance.save()
+        return instance
 
 
 class UnitsSerializer(serializers.ModelSerializer):
