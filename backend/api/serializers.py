@@ -196,8 +196,8 @@ class IngredientInRecipeSerializer(serializers.ModelSerializer):
 
 
 class RecipeReadSerializer(serializers.ModelSerializer):
-    author = CustomUserSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
+    author = CustomUserSerializer(read_only=True)
     ingredients = IngredientInRecipeSerializer(many=True, read_only=True)
     image = serializers.ImageField()
     is_in_shopping_cart = serializers.SerializerMethodField()

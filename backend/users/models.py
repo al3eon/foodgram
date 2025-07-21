@@ -17,6 +17,8 @@ class User(AbstractUser):
         error_messages={
             'unique': 'Пользователь с таким email уже существует!',
         },
+        blank=False,
+        null=False,
     )
 
     username = models.CharField(
@@ -29,16 +31,20 @@ class User(AbstractUser):
         error_messages={
             'unique': 'Пользователь с таким именем уже существует!',
         },
+        blank=False,
+        null=False,
     )
     first_name = models.CharField(
         'Имя',
         max_length=LIMIT_USERNAME,
-        blank=True
+        blank=False,
+        null=False,
     )
     last_name = models.CharField(
         'Фамилия',
         max_length=LIMIT_USERNAME,
-        blank=True
+        blank=False,
+        null=False,
     )
 
     avatar = models.ImageField(

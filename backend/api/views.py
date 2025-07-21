@@ -8,7 +8,7 @@ from djoser.views import UserViewSet
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from api.serializers import (
@@ -43,7 +43,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    pagination_class = PageNumberPagination
+    pagination_class = LimitOffsetPagination
     page_size = 6
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
@@ -52,6 +52,21 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return RecipeReadSerializer
         return RecipeWriteSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        recipe = serializer.save(author=self.request.user)
+        response_serializer = RecipeReadSerializer(recipe, context={'request': request})
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        recipe = serializer.save()
+        response_serializer = RecipeReadSerializer(recipe, context={'request': request})
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -145,6 +160,11 @@ class CustomUserViewSet(UserViewSet):
 
     @action(detail=False, methods=['put'], permission_classes=[IsAuthenticated])
     def avatar(self, request):
+        if 'avatar' not in request.data and 'avatar' not in request.FILES:
+            return Response(
+                {'avatar': 'Это поле обязательно.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         file = next(iter(request.FILES.values()), None)
         if file:
             data = {'avatar_input': file}
