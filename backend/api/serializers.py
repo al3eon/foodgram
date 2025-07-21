@@ -151,6 +151,24 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         self.create_ingredients(recipe, ingredients)
         return recipe
 
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.text = validated_data.get('text', instance.text)
+        instance.cooking_time = validated_data.get('cooking_time', instance.cooking_time)
+        instance.image = validated_data.get('image', instance.image)
+
+        if 'tags' in validated_data:
+            tags = validated_data.pop('tags')
+            instance.tags.set(tags)
+
+        if 'ingredients' in validated_data:
+            ingredients = validated_data.pop('ingredients')
+            instance.ingredients.all().delete()
+            self.create_ingredients(instance, ingredients)
+
+        instance.save()
+        return instance
+
 
 class IngredientInRecipeSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField(source='ingredient.id')
