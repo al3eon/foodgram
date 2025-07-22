@@ -12,6 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
+from api.permissions import IsAuthorOrAdmin
 from api.serializers import (
     AvatarSerializer, CustomUserSerializer, IngredientSerializer,
     RecipeReadSerializer, RecipeWriteSerializer, TagSerializer, ShoppingCartSerializer, FavoriteSerializer,
@@ -54,6 +55,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return RecipeReadSerializer
         return RecipeWriteSerializer
+
+    def get_permissions(self):
+        if self.action in ['update', 'partial_update', 'destroy']:
+            return [IsAuthorOrAdmin()]
+        if self.action == 'create':
+            return [IsAuthenticated()]
+        return super().get_permissions()
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -164,6 +172,7 @@ class ShortLinkRedirectView(View):
 class CustomUserViewSet(UserViewSet):
     queryset = User.objects.all()
     serializer_class = CustomUserSerializer
+    pagination_class = LimitOffsetPagination
 
     def get_serializer_class(self):
         if self.action == 'list':

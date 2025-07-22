@@ -123,8 +123,8 @@ class RecipeIngredientWriteSerializer(serializers.Serializer):
 
 
 class RecipeWriteSerializer(serializers.ModelSerializer):
-    tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True)
-    ingredients = RecipeIngredientWriteSerializer(many=True)
+    tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True, required=True)
+    ingredients = RecipeIngredientWriteSerializer(many=True, required=True)
     image = Base64ImageField()
 
     class Meta:
@@ -148,6 +148,13 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         if len(tag_ids) != len(set(tag_ids)):
             raise serializers.ValidationError('Теги не должны повторяться')
         return tags
+
+    def to_internal_value(self, data):
+        if 'tags' not in data:
+            raise serializers.ValidationError({'tags': 'Поле "tags" обязательно для обновления.'})
+        if 'ingredients' not in data:
+            raise serializers.ValidationError({'ingredients': 'Поле "ingredients" обязательно для обновления.'})
+        return super().to_internal_value(data)
 
     def create_ingredients(self, recipe, ingredients):
         objs = [
@@ -174,14 +181,12 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         instance.cooking_time = validated_data.get('cooking_time', instance.cooking_time)
         instance.image = validated_data.get('image', instance.image)
 
-        if 'tags' in validated_data:
-            tags = validated_data.pop('tags')
-            instance.tags.set(tags)
+        tags = validated_data.pop('tags')
+        instance.tags.set(tags)
 
-        if 'ingredients' in validated_data:
-            ingredients = validated_data.pop('ingredients')
-            instance.ingredients.all().delete()
-            self.create_ingredients(instance, ingredients)
+        ingredients = validated_data.pop('ingredients')
+        instance.ingredients.all().delete()
+        self.create_ingredients(instance, ingredients)
 
         instance.save()
         return instance
