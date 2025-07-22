@@ -3,7 +3,8 @@ import base64
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django_filters.rest_framework import DjangoFilterBackend
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
+from django.views import View
 from djoser.views import UserViewSet
 from rest_framework.response import Response
 from rest_framework import status, viewsets
@@ -142,6 +143,21 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 )
             favorite.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny], url_path='get-link')
+    def get_link(self, request, pk=None):
+        recipe = self.get_object()
+        short_link = f"{request.scheme}://{request.get_host()}/api/r/{recipe.short_code}"
+        return Response({"short-link": short_link}, status=status.HTTP_200_OK)
+
+
+class ShortLinkRedirectView(View):
+    def get(self, request, short_code):
+        try:
+            recipe = Recipe.objects.get(short_code=short_code)
+            return HttpResponseRedirect(f"/recipes/{recipe.id}/")
+        except Recipe.DoesNotExist:
+            return HttpResponse(status=404)
 
 
 class CustomUserViewSet(UserViewSet):
