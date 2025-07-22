@@ -82,11 +82,11 @@ class AvatarSerializer(serializers.ModelSerializer):
 
     def validate_avatar_input(self, value):
         if not value:
-            raise serializers.ValidationError('No avatar file provided.')
+            raise serializers.ValidationError('Файл отсутствует.')
         valid_extensions = ['.png', '.jpg', '.jpeg']
         ext = os.path.splitext(value.name)[1].lower()
         if ext not in valid_extensions:
-            raise serializers.ValidationError('Unsupported image format. Use PNG or JPEG.')
+            raise serializers.ValidationError('Неподдерживаемый формат. Используйте PNG или JPEG')
         return value
 
     def update(self, instance, validated_data):
@@ -133,17 +133,20 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
 
     def validate_ingredients(self, ingredients):
         if not ingredients:
-            raise serializers.ValidationError('Нужен хотя бы один ингредиент.')
+            raise serializers.ValidationError('Нужен хотя бы один ингредиент')
         seen = set()
         for item in ingredients:
             if item['id'] in seen:
-                raise serializers.ValidationError('Ингредиенты не должны повторяться.')
+                raise serializers.ValidationError('Ингредиенты не должны повторяться')
             seen.add(item['id'])
         return ingredients
 
     def validate_tags(self, tags):
         if not tags:
-            raise serializers.ValidationError('Нужен хотя бы один тег.')
+            raise serializers.ValidationError('Нужен хотя бы один тег')
+        tag_ids = [tag.id for tag in tags]
+        if len(tag_ids) != len(set(tag_ids)):
+            raise serializers.ValidationError('Теги не должны повторяться')
         return tags
 
     def create_ingredients(self, recipe, ingredients):
