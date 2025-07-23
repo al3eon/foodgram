@@ -9,16 +9,19 @@ from djoser.views import UserViewSet
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
-from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.permissions import (
+    AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly)
 
+from api.filters import IngredientFilter, RecipeFilter
+from api.pagination import CustomLimitOffsetPagination
 from api.permissions import IsAuthorOrAdmin
 from api.serializers import (
-    AvatarSerializer, CustomUserSerializer, IngredientSerializer,
-    RecipeReadSerializer, RecipeWriteSerializer, TagSerializer, ShoppingCartSerializer, FavoriteSerializer,
-    SubscriptionSerializer, UserListSerializer)
-from api.filters import IngredientFilter, RecipeFilter
-from recipes.models import Tag, Recipe, Ingredient, ShoppingCart, Favorite
+    AvatarSerializer, CustomUserSerializer, FavoriteSerializer,
+    IngredientSerializer, RecipeReadSerializer, RecipeWriteSerializer,
+    ShoppingCartSerializer, SubscriptionSerializer, TagSerializer,
+    UserListSerializer)
+from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 from users.models import Subscription
 
 User = get_user_model()
@@ -39,13 +42,12 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (AllowAny,)
     pagination_class = None
     filter_backends = (DjangoFilterBackend,)
-    filterset_fields = ('name',)
     filterset_class = IngredientFilter
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    pagination_class = LimitOffsetPagination
+    pagination_class = CustomLimitOffsetPagination
     page_size = 6
     permission_classes = (IsAuthenticatedOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
@@ -57,10 +59,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return RecipeWriteSerializer
 
     def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return (AllowAny(),)
         if self.action in ['update', 'partial_update', 'destroy']:
-            return [IsAuthorOrAdmin()]
+            return (IsAuthorOrAdmin(),)
         if self.action == 'create':
-            return [IsAuthenticated()]
+            return (IsAuthenticated(),)
         return super().get_permissions()
 
     def create(self, request, *args, **kwargs):
@@ -172,7 +176,7 @@ class ShortLinkRedirectView(View):
 class CustomUserViewSet(UserViewSet):
     queryset = User.objects.all()
     serializer_class = CustomUserSerializer
-    pagination_class = LimitOffsetPagination
+    pagination_class = CustomLimitOffsetPagination
 
     def get_serializer_class(self):
         if self.action == 'list':

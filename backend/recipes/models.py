@@ -66,7 +66,7 @@ class Recipe(models.Model):
     short_code = models.CharField(max_length=8, unique=True, blank=True)
 
     class Meta:
-        ordering = ['name']
+        ordering = ['id']
 
     def save(self, *args, **kwargs):
         if not self.short_code:
