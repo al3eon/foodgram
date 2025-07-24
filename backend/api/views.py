@@ -9,7 +9,6 @@ from djoser.views import UserViewSet
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import (
     AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly)
 
@@ -74,7 +73,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response(response_serializer.data, status=status_code)
 
     def create(self, request, *args, **kwargs):
-        """Создает новый рецепт, устанавливая текущего пользователя как автора."""
+        """Создает новый рецепт."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.validated_data['author'] = request.user
@@ -86,30 +85,45 @@ class RecipeViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         return self._save_and_respond(serializer, request, status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
-    def shopping_cart(self, request, pk=None):
+    def _handle_user_recipe_action(self, request, model, serializer_class, error_exists, error_not_exists):
+        """Обрабатывает добавление/удаление рецепта в модели пользователя (корзина/избранное)."""
         recipe = self.get_object()
         user = request.user
 
         if request.method == 'POST':
-            if ShoppingCart.objects.filter(user=user, recipe=recipe).exists():
-                return Response(
-                    {'errors': 'Рецепт уже в списке покупок'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            shopping_cart = ShoppingCart.objects.create(user=user, recipe=recipe)
-            serializer = ShoppingCartSerializer(shopping_cart, context={'request': request})
+            if model.objects.filter(user=user, recipe=recipe).exists():
+                return Response({'errors': error_exists}, status=status.HTTP_400_BAD_REQUEST)
+            instance = model.objects.create(user=user, recipe=recipe)
+            serializer = serializer_class(instance, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        if request.method == 'DELETE':
-            shopping_cart = ShoppingCart.objects.filter(user=user, recipe=recipe)
-            if not shopping_cart.exists():
-                return Response(
-                    {'errors': 'Рецепт не в списке покупок'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            shopping_cart.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+        instance = model.objects.filter(user=user, recipe=recipe)
+        if not instance.exists():
+            return Response({'errors': error_not_exists}, status=status.HTTP_400_BAD_REQUEST)
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def shopping_cart(self, request, pk=None):
+        """Добавляет или удаляет рецепт из списка покупок пользователя."""
+        return self._handle_user_recipe_action(
+            request,
+            ShoppingCart,
+            ShoppingCartSerializer,
+            'Рецепт уже в списке покупок',
+            'Рецепт не в списке покупок'
+        )
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def favorite(self, request, pk=None):
+        """Добавляет или удаляет рецепт из избранного пользователя."""
+        return self._handle_user_recipe_action(
+            request,
+            Favorite,
+            FavoriteSerializer,
+            'Рецепт уже в избранном',
+            'Рецепт не в избранном'
+        )
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
@@ -132,31 +146,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
         response = HttpResponse(content, content_type='text/plain')
         response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
         return response
-
-    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
-    def favorite(self, request, pk=None):
-        recipe = self.get_object()
-        user = request.user
-
-        if request.method == 'POST':
-            if Favorite.objects.filter(user=user, recipe=recipe).exists():
-                return Response(
-                    {'errors': 'Рецепт уже в избранном'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            favorite = Favorite.objects.create(user=user, recipe=recipe)
-            serializer = FavoriteSerializer(favorite, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        if request.method == 'DELETE':
-            favorite = Favorite.objects.filter(user=user, recipe=recipe)
-            if not favorite.exists():
-                return Response(
-                    {'errors': 'Рецепт не в избранном'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            favorite.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['get'], permission_classes=[AllowAny], url_path='get-link')
     def get_link(self, request, pk=None):
