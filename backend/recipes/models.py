@@ -7,7 +7,7 @@ from django.db import models
 User = get_user_model()
 
 
-class Units(models.Model):
+class Unit(models.Model):
     name = models.CharField(max_length=30)
 
     class Meta:
@@ -37,7 +37,7 @@ class Tag(models.Model):
 class Ingredient(models.Model):
     name = models.CharField(max_length=40)
     measurement_unit = models.ForeignKey(
-        Units,
+        Unit,
         on_delete=models.PROTECT,
         related_name='ingredients'
     )

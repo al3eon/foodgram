@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from djoser.serializers import UserCreateSerializer, UserSerializer, SetPasswordSerializer
 from rest_framework import serializers
 
-from recipes.models import Units, Tag, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Favorite
+from recipes.models import Tag, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Favorite
 from users.models import Subscription
 
 User = get_user_model()
@@ -94,12 +94,6 @@ class AvatarSerializer(serializers.ModelSerializer):
             instance.avatar = validated_data['avatar_input']
             instance.save()
         return instance
-
-
-class UnitsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Units
-        fields = ('id', 'name')
 
 
 class TagSerializer(serializers.ModelSerializer):
