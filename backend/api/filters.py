@@ -1,5 +1,5 @@
 from django.db.models import Q
-from django_filters.rest_framework import FilterSet, CharFilter, filters
+from django_filters.rest_framework import CharFilter, filters, FilterSet
 
 from recipes.models import Ingredient, Recipe
 
@@ -14,7 +14,8 @@ class IngredientFilter(FilterSet):
 
 class RecipeFilter(FilterSet):
     tags = CharFilter(method='filter_tags')
-    is_in_shopping_cart = filters.BooleanFilter(method='filter_is_in_shopping_cart')
+    is_in_shopping_cart = filters.BooleanFilter(
+        method='filter_is_in_shopping_cart')
     is_favorited = filters.BooleanFilter(method='filter_is_favorited')
 
     class Meta:

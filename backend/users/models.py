@@ -3,7 +3,6 @@ from django.db import models
 
 from .validators import username_validator
 
-
 LIMIT_EMAIL = 254
 LIMIT_USERNAME = 150
 OUTPUT_LENGTH = 30
@@ -11,18 +10,17 @@ OUTPUT_LENGTH = 30
 
 class User(AbstractUser):
     email = models.EmailField(
-        'Электронная почта',
         max_length=LIMIT_EMAIL,
         unique=True,
         error_messages={
             'unique': 'Пользователь с таким email уже существует!',
         },
+        verbose_name='Электронная почта',
         blank=False,
         null=False,
     )
 
     username = models.CharField(
-        'Имя пользователя',
         max_length=LIMIT_USERNAME,
         unique=True,
         help_text=f'Обязательное поле. Не более {LIMIT_USERNAME} символов. '
@@ -31,26 +29,26 @@ class User(AbstractUser):
         error_messages={
             'unique': 'Пользователь с таким именем уже существует!',
         },
+        verbose_name='Имя пользователя',
         blank=False,
         null=False,
     )
     first_name = models.CharField(
-        'Имя',
+        verbose_name='Имя',
         max_length=LIMIT_USERNAME,
         blank=False,
         null=False,
     )
     last_name = models.CharField(
-        'Фамилия',
         max_length=LIMIT_USERNAME,
+        verbose_name='Фамилия',
         blank=False,
         null=False,
     )
 
     avatar = models.ImageField(
-        'Аватар',
         upload_to='users/',
-        default='avatars/default.jpg',
+        verbose_name='Аватар',
         blank=True,
         null=True
     )
@@ -59,7 +57,7 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['username']
 
     class Meta:
-        verbose_name = 'Пользователь'
+        verbose_name = 'пользователь'
         verbose_name_plural = 'Пользователи'
         ordering = ('username',)
 
@@ -82,10 +80,11 @@ class Subscription(models.Model):
     )
 
     class Meta:
-        verbose_name = 'Подписка'
+        verbose_name = 'подписка'
         verbose_name_plural = 'Подписки'
         constraints = [
-            models.UniqueConstraint(fields=['user', 'author'], name='unique_subscription'),
+            models.UniqueConstraint(
+                fields=['user', 'author'], name='unique_subscription'),
             models.CheckConstraint(
                 name='no_self_subscription',
                 check=~models.Q(user=models.F('author'))
