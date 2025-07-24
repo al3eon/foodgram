@@ -11,7 +11,20 @@ from users.models import Subscription
 User = get_user_model()
 
 
+class IsSubscribedMixin:
+    """Миксин для добавления поля is_subscribed."""
+    is_subscribed = serializers.SerializerMethodField(read_only=True)
+
+    def get_is_subscribed(self, obj):
+        """Проверяет, подписан ли текущий пользователь на объект."""
+        request = self.context.get('request')
+        if request is None or request.user.is_anonymous:
+            return False
+        return Subscription.objects.filter(user=request.user, author=obj).exists()
+
+
 class CustomUserCreateSerializer(UserCreateSerializer):
+    """Сериализатор для создания пользователя."""
     class Meta(UserCreateSerializer.Meta):
         model = User
         fields = (
@@ -22,29 +35,27 @@ class CustomUserCreateSerializer(UserCreateSerializer):
             'last_name',
             'password'
         )
+        extra_kwargs = {'password': {'write_only': True}}
 
 
 class ShortRecipeSerializer(serializers.ModelSerializer):
+    """Сериализатор для краткого представления рецепта."""
     class Meta:
         model = Recipe
         fields = ('id', 'name', 'image', 'cooking_time')
 
 
-class UserListSerializer(serializers.ModelSerializer):
+class UserListSerializer(IsSubscribedMixin, serializers.ModelSerializer):
+    """Сериализатор для списка пользователей."""
     is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ('email', 'id', 'username', 'first_name', 'last_name', 'is_subscribed', 'avatar')
 
-    def get_is_subscribed(self, obj):
-        request = self.context.get('request')
-        if request is None or request.user.is_anonymous:
-            return False
-        return Subscription.objects.filter(user=request.user, author=obj).exists()
 
-
-class CustomUserSerializer(UserSerializer):
+class CustomUserSerializer(IsSubscribedMixin, UserSerializer):
+    """Сериализатор для детального представления пользователя."""
     is_subscribed = serializers.SerializerMethodField(read_only=True)
     avatar = serializers.ImageField(required=False, allow_null=True)
 
@@ -60,13 +71,8 @@ class CustomUserSerializer(UserSerializer):
             'avatar'
         )
 
-    def get_is_subscribed(self, obj):
-        request = self.context.get('request')
-        if request is None or request.user.is_anonymous:
-            return False
-        return Subscription.objects.filter(user=request.user, author=obj).exists()
-
     def get_recipes(self, obj):
+        """Возвращает рецепты пользователя."""
         recipes = Recipe.objects.filter(author=obj)
         serializer = ShortRecipeSerializer(recipes, many=True)
         return serializer.data

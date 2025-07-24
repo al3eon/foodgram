@@ -47,7 +47,6 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     pagination_class = CustomLimitOffsetPagination
-    page_size = 6
     permission_classes = (IsAuthenticatedOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
@@ -211,6 +210,7 @@ class CustomUserViewSet(UserViewSet):
 
     @avatar.mapping.delete
     def delete_avatar(self, request):
+        """Удаляет аватар пользователя."""
         user = request.user
         if user.avatar:
             user.avatar.delete(save=True)
