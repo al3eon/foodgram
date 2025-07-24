@@ -67,23 +67,24 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return (IsAuthenticated(),)
         return super().get_permissions()
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        recipe = serializer.save(author=self.request.user)
-        response_serializer = RecipeReadSerializer(recipe, context={'request': request})
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
+    def _save_and_respond(self, serializer, request, status_code):
+        """Сохраняет рецепт и возвращает ответ с использованием RecipeReadSerializer."""
         recipe = serializer.save()
         response_serializer = RecipeReadSerializer(recipe, context={'request': request})
-        return Response(response_serializer.data, status=status.HTTP_200_OK)
+        return Response(response_serializer.data, status=status_code)
 
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+    def create(self, request, *args, **kwargs):
+        """Создает новый рецепт, устанавливая текущего пользователя как автора."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.validated_data['author'] = request.user
+        return self._save_and_respond(serializer, request, status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        """Обновляет существующий рецепт."""
+        serializer = self.get_serializer(self.get_object(), data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        return self._save_and_respond(serializer, request, status.HTTP_200_OK)
 
     @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
     def shopping_cart(self, request, pk=None):
