@@ -32,7 +32,7 @@ jobs:
         pip install flake8==6.0.0 flake8-isort==6.0.0
         pip install -r ./backend/requirements.txt
 
-    - name: Test with flake8 and django tests
+    - name: Test with flake8
       env:
         POSTGRES_USER: django_user
         POSTGRES_PASSWORD: django_password

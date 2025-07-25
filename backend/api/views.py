@@ -2,15 +2,14 @@ import base64
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from django_filters.rest_framework import DjangoFilterBackend
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views import View
+from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
-from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import (
-    AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly)
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
 
 from api.filters import IngredientFilter, RecipeFilter
 from api.pagination import CustomLimitOffsetPagination
@@ -19,7 +18,8 @@ from api.serializers import (
     AvatarSerializer, CustomUserSerializer, FavoriteSerializer,
     IngredientSerializer, RecipeReadSerializer, RecipeWriteSerializer,
     ShoppingCartSerializer, SubscriptionSerializer, TagSerializer,
-    UserListSerializer)
+    UserListSerializer
+)
 from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 from users.models import Subscription
 

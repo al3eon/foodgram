@@ -4,8 +4,7 @@ import os
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
-
-from recipes.models import Ingredient, Unit, Tag, Recipe, RecipeIngredient
+from recipes.models import Ingredient, Recipe, RecipeIngredient, Tag, Unit
 
 User = get_user_model()
 

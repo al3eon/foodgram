@@ -1,14 +1,13 @@
 import base64
 import os
 
-from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
-from djoser.serializers import (
-    UserCreateSerializer, UserSerializer, SetPasswordSerializer)
+from django.core.files.base import ContentFile
+from djoser.serializers import (SetPasswordSerializer, UserCreateSerializer,
+                                UserSerializer)
+from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
+                            ShoppingCart, Tag)
 from rest_framework import serializers
-
-from recipes.models import (
-    Favorite, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Tag)
 from users.models import Subscription
 
 User = get_user_model()
