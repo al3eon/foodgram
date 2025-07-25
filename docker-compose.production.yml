@@ -33,7 +33,7 @@ services:
     container_name: foodgram-proxy
     image: al3eon/foodgram_proxy
     ports:
-      - "80:80"
+      - "8000:80"
     volumes:
       - static:/static
       - media:/media

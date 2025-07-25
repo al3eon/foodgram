@@ -32,9 +32,8 @@ services:
   gateway:
     container_name: foodgram-proxy
     build: ./nginx/
-    image: nginx:1.25.4-alpine
     ports:
-      - "80:80"
+      - "8000:80"
     volumes:
       - static:/static
       - media:/media
