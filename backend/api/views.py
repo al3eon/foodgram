@@ -190,7 +190,7 @@ class CustomUserViewSet(UserViewSet):
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
-            return [AllowAny(),]
+            return [AllowAny(), ]
         return super().get_permissions()
 
     @action(detail=False, methods=['put'],
