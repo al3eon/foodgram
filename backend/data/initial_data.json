@@ -1,0 +1,148 @@
+{
+  "users": [
+    {
+      "username": "ivan_ivanov",
+      "email": "ivan@example.com",
+      "password": "password123",
+      "first_name": "Иван",
+      "last_name": "Иванов"
+    },
+    {
+      "username": "maria_petrova",
+      "email": "maria@example.com",
+      "password": "password123",
+      "first_name": "Мария",
+      "last_name": "Петрова"
+    },
+    {
+      "username": "admin",
+      "email": "admin@example.com",
+      "password": "admin123",
+      "first_name": "Админ",
+      "last_name": "Админов",
+      "is_staff": true
+    }
+  ],
+  "units": [
+    {"name": "г"},
+    {"name": "мл"},
+    {"name": "шт"}
+  ],
+  "ingredients": [
+    {"name": "мука", "measurement_unit": "г"},
+    {"name": "сахар", "measurement_unit": "г"},
+    {"name": "молоко", "measurement_unit": "мл"},
+    {"name": "яйцо", "measurement_unit": "шт"},
+    {"name": "масло сливочное", "measurement_unit": "г"},
+    {"name": "вишня", "measurement_unit": "г"},
+    {"name": "вода", "measurement_unit": "мл"},
+    {"name": "соль", "measurement_unit": "г"}
+  ],
+  "tags": [
+    {"name": "Завтрак", "slug": "breakfast"},
+    {"name": "Обед", "slug": "lunch"},
+    {"name": "Ужин", "slug": "dinner"},
+    {"name": "Десерт", "slug": "dessert"},
+    {"name": "Перекус", "slug": "snack"},
+    {"name": "Праздничное", "slug": "holiday"}
+  ],
+  "recipes": [
+    {
+      "name": "Блины",
+      "text": "Смешать муку, молоко, яйца, сахар и соль. Жарить на сковороде.",
+      "cooking_time": 30,
+      "author": "ivan_ivanov",
+      "tags": ["breakfast", "dessert"],
+      "ingredients": [
+        {"name": "мука", "amount": 200},
+        {"name": "молоко", "amount": 500},
+        {"name": "яйцо", "amount": 2},
+        {"name": "сахар", "amount": 50},
+        {"name": "соль", "amount": 5}
+      ]
+    },
+    {
+      "name": "Вишнёвый пирог",
+      "text": "Приготовить тесто из муки, масла и воды, добавить вишню и сахар.",
+      "cooking_time": 60,
+      "author": "maria_petrova",
+      "tags": ["dessert", "holiday"],
+      "ingredients": [
+        {"name": "мука", "amount": 300},
+        {"name": "масло сливочное", "amount": 100},
+        {"name": "вишня", "amount": 400},
+        {"name": "сахар", "amount": 150},
+        {"name": "вода", "amount": 100}
+      ]
+    },
+    {
+      "name": "Омлет",
+      "text": "Взбить яйца с молоком, добавить соль, жарить на сковороде.",
+      "cooking_time": 15,
+      "author": "ivan_ivanov",
+      "tags": ["breakfast", "snack"],
+      "ingredients": [
+        {"name": "яйцо", "amount": 3},
+        {"name": "молоко", "amount": 100},
+        {"name": "соль", "amount": 3}
+      ]
+    },
+    {
+      "name": "Суп",
+      "text": "Сварить бульон, добавить овощи и соль.",
+      "cooking_time": 45,
+      "author": "maria_petrova",
+      "tags": ["lunch", "dinner"],
+      "ingredients": [
+        {"name": "вода", "amount": 1000},
+        {"name": "соль", "amount": 10}
+      ]
+    },
+    {
+      "name": "Кекс",
+      "text": "Смешать муку, сахар, яйца и масло, выпекать в духовке.",
+      "cooking_time": 40,
+      "author": "ivan_ivanov",
+      "tags": ["dessert", "snack"],
+      "ingredients": [
+        {"name": "мука", "amount": 250},
+        {"name": "сахар", "amount": 100},
+        {"name": "яйцо", "amount": 2},
+        {"name": "масло сливочное", "amount": 80}
+      ]
+    },
+    {
+      "name": "Салат",
+      "text": "Нарезать овощи, заправить маслом и солью.",
+      "cooking_time": 20,
+      "author": "maria_petrova",
+      "tags": ["lunch", "snack"],
+      "ingredients": [
+        {"name": "соль", "amount": 5},
+        {"name": "масло сливочное", "amount": 20}
+      ]
+    },
+    {
+      "name": "Тосты",
+      "text": "Поджарить хлеб, намазать маслом.",
+      "cooking_time": 10,
+      "author": "ivan_ivanov",
+      "tags": ["breakfast", "snack"],
+      "ingredients": [
+        {"name": "масло сливочное", "amount": 30}
+      ]
+    },
+    {
+      "name": "Компот",
+      "text": "Сварить вишню с сахаром и водой.",
+      "cooking_time": 25,
+      "author": "maria_petrova",
+      "tags": ["dessert", "holiday"],
+      "ingredients": [
+        {"name": "вишня", "amount": 200},
+        {"name": "сахар", "amount": 100},
+        {"name": "вода", "amount": 500}
+      ]
+    }
+  ]
+}
