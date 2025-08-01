@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from djoser.serializers import (SetPasswordSerializer, UserCreateSerializer,
                                 UserSerializer)
+from drf_extra_fields.fields import Base64ImageField
 from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
                             ShoppingCart, Tag)
 from rest_framework import serializers
@@ -75,16 +76,10 @@ class CustomUserSerializer(IsSubscribedMixin, UserSerializer):
             'avatar'
         )
 
-    def get_recipes(self, obj):
-        """Возвращает рецепты пользователя."""
-        recipes = Recipe.objects.filter(author=obj)
-        serializer = ShortRecipeSerializer(recipes, many=True)
-        return serializer.data
-
 
 class AvatarSerializer(serializers.ModelSerializer):
     """Сериализатор для аватара."""
-    avatar = serializers.ImageField(read_only=True)
+    avatar = Base64ImageField(write_only=True, required=False, allow_null=True)
     avatar_input = serializers.ImageField(
         write_only=True, required=False, allow_null=True)
 
@@ -114,16 +109,6 @@ class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ('id', 'name', 'slug')
-
-
-class Base64ImageField(serializers.ImageField):
-    """Кастомное поле для обработки изображений в формате base64."""
-    def to_internal_value(self, data):
-        if isinstance(data, str) and data.startswith('data:image'):
-            format, imgstr = data.split(';base64,')
-            ext = format.split('/')[-1]
-            data = ContentFile(base64.b64decode(imgstr), name=f'image.{ext}')
-        return super().to_internal_value(data)
 
 
 class RecipeIngredientWriteSerializer(serializers.Serializer):
