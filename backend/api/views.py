@@ -14,7 +14,7 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 
 from api.filters import IngredientFilter, RecipeFilter
-from api.pagination import RecipeLimitOffsetPagination
+from api.pagination import RecipePagePagination
 from api.permissions import IsAuthorOrReadOnly
 from api.serializers import (
     AvatarSerializer, CustomUserSerializer, FavoriteSerializer,
@@ -48,7 +48,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    pagination_class = RecipeLimitOffsetPagination
+    pagination_class = RecipePagePagination
     permission_classes = (IsAuthenticatedOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
@@ -181,7 +181,7 @@ class ShortLinkRedirectView(View):
 class CustomUserViewSet(UserViewSet):
     queryset = User.objects.all()
     serializer_class = CustomUserSerializer
-    pagination_class = RecipeLimitOffsetPagination
+    pagination_class = RecipePagePagination
 
     def get_serializer_class(self):
         if self.action == 'list':

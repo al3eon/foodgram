@@ -17,6 +17,5 @@ urlpatterns = [
         {'put': 'avatar', 'delete': 'delete_avatar'}
     ), name='user-avatar'),
     path('', include(router.urls)),
-    path('', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),
 ]
