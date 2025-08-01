@@ -1,7 +1,6 @@
-from django.db.models import Q
-from django_filters.rest_framework import CharFilter, FilterSet, filters
+from django_filters.rest_framework import CharFilter, FilterSet, filters, ModelMultipleChoiceFilter
 
-from recipes.models import Ingredient, Recipe
+from recipes.models import Ingredient, Recipe, Tag
 
 
 class IngredientFilter(FilterSet):
@@ -13,23 +12,19 @@ class IngredientFilter(FilterSet):
 
 
 class RecipeFilter(FilterSet):
-    tags = CharFilter(method='filter_tags')
+    tags = ModelMultipleChoiceFilter(
+        field_name='tags__slug',
+        to_field_name='slug',
+        queryset=Tag.objects.all(),
+    )
     is_in_shopping_cart = filters.BooleanFilter(
-        method='filter_is_in_shopping_cart')
+        method='filter_is_in_shopping_cart'
+    )
     is_favorited = filters.BooleanFilter(method='filter_is_favorited')
 
     class Meta:
         model = Recipe
         fields = ('author', 'tags', 'is_in_shopping_cart', 'is_favorited')
-
-    def filter_tags(self, queryset, name, value):
-        tags = self.request.query_params.getlist('tags')
-        if tags:
-            q_objects = Q()
-            for tag in tags:
-                q_objects |= Q(tags__slug=tag)
-            queryset = queryset.filter(q_objects).distinct()
-        return queryset
 
     def filter_is_in_shopping_cart(self, queryset, name, value):
         if value and self.request.user.is_authenticated:

@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+PAGINATION_DEFAULT_LIMIT = 6
+PAGINATION_MAX_LIMIT = 100
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', get_random_secret_key())

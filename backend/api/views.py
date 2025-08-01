@@ -14,8 +14,8 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 
 from api.filters import IngredientFilter, RecipeFilter
-from api.pagination import CustomLimitOffsetPagination
-from api.permissions import IsAuthorOrAdmin
+from api.pagination import RecipeLimitOffsetPagination
+from api.permissions import IsAuthorOrReadOnly
 from api.serializers import (
     AvatarSerializer, CustomUserSerializer, FavoriteSerializer,
     IngredientSerializer, RecipeReadSerializer, RecipeWriteSerializer,
@@ -48,7 +48,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    pagination_class = CustomLimitOffsetPagination
+    pagination_class = RecipeLimitOffsetPagination
     permission_classes = (IsAuthenticatedOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
@@ -62,7 +62,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return (AllowAny(),)
         if self.action in ['update', 'partial_update', 'destroy']:
-            return (IsAuthorOrAdmin(),)
+            return (IsAuthorOrReadOnly(),)
         if self.action == 'create':
             return (IsAuthenticated(),)
         return super().get_permissions()
@@ -181,7 +181,7 @@ class ShortLinkRedirectView(View):
 class CustomUserViewSet(UserViewSet):
     queryset = User.objects.all()
     serializer_class = CustomUserSerializer
-    pagination_class = CustomLimitOffsetPagination
+    pagination_class = RecipeLimitOffsetPagination
 
     def get_serializer_class(self):
         if self.action == 'list':
