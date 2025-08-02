@@ -200,7 +200,6 @@ class IngredientInRecipeSerializer(serializers.ModelSerializer):
     name = serializers.ReadOnlyField(source='ingredient.name')
     measurement_unit = serializers.CharField(
         source='ingredient.measurement_unit.name')
-    amount = serializers.IntegerField()
 
     class Meta:
         model = RecipeIngredient
@@ -214,8 +213,8 @@ class RecipeReadSerializer(serializers.ModelSerializer):
     ingredients = IngredientInRecipeSerializer(
         source='ingredient_relations',many=True, read_only=True)
     image = serializers.SerializerMethodField(read_only=True)
-    is_in_shopping_cart = serializers.SerializerMethodField()
-    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.BooleanField(read_only=True)
+    is_favorited = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Recipe
@@ -226,22 +225,6 @@ class RecipeReadSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         return obj.image.url if obj.image else ""
 
-    def get_is_in_shopping_cart(self, obj):
-        """Проверяет, добавлен ли рецепт в корзину покупок."""
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return ShoppingCart.objects.filter(
-                user=request.user, recipe=obj).exists()
-        return False
-
-    def get_is_favorited(self, obj):
-        """Проверяет, добавлен ли рецепт в избранное."""
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return Favorite.objects.filter(
-                user=request.user, recipe=obj).exists()
-        return False
-
 
 class IngredientSerializer(serializers.ModelSerializer):
     """Сериализатор для ингредиентов."""
@@ -250,35 +233,6 @@ class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
         fields = ('id', 'name', 'measurement_unit')
-
-
-class RecipeRelationSerializer(serializers.ModelSerializer):
-    """Сериализатор для представления рецепта в корзине или избранном."""
-    id = serializers.IntegerField(source='recipe.id')
-    name = serializers.CharField(source='recipe.name')
-    image = serializers.ImageField(source='recipe.image')
-    cooking_time = serializers.IntegerField(source='recipe.cooking_time')
-
-    class Meta:
-        fields = ('id', 'name', 'image', 'cooking_time')
-
-
-class ShoppingCartSerializer(RecipeRelationSerializer):
-    """Сериализатор для корзины покупок."""
-    class Meta(RecipeRelationSerializer.Meta):
-        model = ShoppingCart
-
-
-class FavoriteSerializer(RecipeRelationSerializer):
-    """Сериализатор для избранных рецептов."""
-    class Meta(RecipeRelationSerializer.Meta):
-        model = Favorite
-
-
-class CustomSetPasswordSerializer(SetPasswordSerializer):
-    """Сериализатор для смены пароля пользователя."""
-    current_password = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True)
 
 
 class SubscriptionSerializer(CustomUserSerializer):

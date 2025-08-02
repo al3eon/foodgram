@@ -2,6 +2,8 @@ import base64
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
+from django.db.models import Exists, OuterRef, Value
+from django.db.models.fields import BooleanField
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views import View
 from django_filters.rest_framework import DjangoFilterBackend
@@ -17,10 +19,9 @@ from api.filters import IngredientFilter, RecipeFilter
 from api.pagination import RecipePagePagination
 from api.permissions import IsAuthorOrReadOnly
 from api.serializers import (
-    AvatarSerializer, CustomUserSerializer, FavoriteSerializer,
-    IngredientSerializer, RecipeReadSerializer, RecipeWriteSerializer,
-    ShoppingCartSerializer, SubscriptionSerializer, TagSerializer,
-    UserListSerializer
+    AvatarSerializer, CustomUserSerializer, IngredientSerializer,
+    RecipeReadSerializer, RecipeWriteSerializer, ShortRecipeSerializer,
+    SubscriptionSerializer, TagSerializer, UserListSerializer,
 )
 from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 from users.models import Subscription
@@ -67,11 +68,31 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return (IsAuthenticated(),)
         return super().get_permissions()
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:
+            queryset = queryset.annotate(
+                is_favorited=Exists(
+                    Favorite.objects.filter(user=user, recipe=OuterRef('pk'))
+                ),
+                is_in_shopping_cart=Exists(
+                    ShoppingCart.objects.filter(user=user, recipe=OuterRef('pk'))
+                )
+            )
+        else:
+            queryset = queryset.annotate(
+                is_favorited=Value(False, output_field=BooleanField()),
+                is_in_shopping_cart=Value(False, output_field=BooleanField())
+            )
+        return queryset
+
     def _save_and_respond(self, serializer, request, status_code):
         """Сохраняет рецепт и возвращает ответ RecipeReadSerializer."""
         recipe = serializer.save()
+        annotated_recipe = self.get_queryset().get(pk=recipe.pk)
         response_serializer = RecipeReadSerializer(
-            recipe, context={'request': request})
+            annotated_recipe, context={'request': request})
         return Response(response_serializer.data, status=status_code)
 
     def create(self, request, *args, **kwargs):
@@ -99,9 +120,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
             if model.objects.filter(user=user, recipe=recipe).exists():
                 return Response({'errors': error_exists},
                                 status=status.HTTP_400_BAD_REQUEST)
-            instance = model.objects.create(user=user, recipe=recipe)
+            model.objects.create(user=user, recipe=recipe)
             serializer = serializer_class(
-                instance, context={'request': request})
+                recipe, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         instance = model.objects.filter(user=user, recipe=recipe)
@@ -118,7 +139,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return self._handle_user_recipe_action(
             request,
             ShoppingCart,
-            ShoppingCartSerializer,
+            ShortRecipeSerializer,
             'Рецепт уже в списке покупок',
             'Рецепт не в списке покупок'
         )
@@ -130,7 +151,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return self._handle_user_recipe_action(
             request,
             Favorite,
-            FavoriteSerializer,
+            ShortRecipeSerializer,
             'Рецепт уже в избранном',
             'Рецепт не в избранном'
         )
@@ -165,17 +186,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_link(self, request, pk=None):
         recipe = self.get_object()
         short_link = (f"{request.scheme}://{request.get_host()}"
-                      f"/api/r/{recipe.short_code}")
+                      f"/r/{recipe.short_code}")
         return Response({"short-link": short_link}, status=status.HTTP_200_OK)
-
-
-class ShortLinkRedirectView(View):
-    def get(self, request, short_code):
-        try:
-            recipe = Recipe.objects.get(short_code=short_code)
-            return HttpResponseRedirect(f"/recipes/{recipe.id}/")
-        except Recipe.DoesNotExist:
-            return HttpResponse(status=404)
 
 
 class CustomUserViewSet(UserViewSet):
