@@ -1,8 +1,7 @@
-import base64
 import os
 
 from django.contrib.auth import get_user_model
-from django.core.files.base import ContentFile
+from django.db.transaction import atomic
 from djoser.serializers import (SetPasswordSerializer, UserCreateSerializer,
                                 UserSerializer)
 from drf_extra_fields.fields import Base64ImageField
@@ -129,37 +128,31 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         fields = ('name', 'text', 'tags',
                   'ingredients', 'image', 'cooking_time')
 
-    def validate_ingredients(self, ingredients):
-        """Проверяет наличие и ингредиентов тегов."""
+    def validate(self,data):
+        """Проверяет наличие и уникальность тегов и ингредиентов."""
+        if not data.get('image'):
+            raise serializers.ValidationError({'image': 'Поле image не может быть пустым'})
+
+        tags = data.get('tags')
+        ingredients = data.get('ingredients')
+
+        if not tags:
+            raise serializers.ValidationError({'tags': 'Нужен хотя бы один тег'})
+        tag_ids = [tag.id for tag in tags]
+        if len(tag_ids) != len(set(tag_ids)):
+            raise serializers.ValidationError({'tags': 'Теги не должны повторяться'})
+
         if not ingredients:
-            raise serializers.ValidationError('Нужен хотя бы один ингредиент')
+            raise serializers.ValidationError({'ingredients': 'Нужен хотя бы один ингредиент'})
         seen = set()
         for item in ingredients:
             if item['id'] in seen:
                 raise serializers.ValidationError(
-                    'Ингредиенты не должны повторяться')
+                    {'ingredients': 'Ингредиенты не должны повторяться'}
+                )
             seen.add(item['id'])
-        return ingredients
 
-    def validate_tags(self, tags):
-        """Проверяет наличие и уникальность тегов."""
-        if not tags:
-            raise serializers.ValidationError('Нужен хотя бы один тег')
-        tag_ids = [tag.id for tag in tags]
-        if len(tag_ids) != len(set(tag_ids)):
-            raise serializers.ValidationError('Теги не должны повторяться')
-        return tags
-
-    def to_internal_value(self, data):
-        """Проверяет наличие полей при создании и обновлении."""
-        if 'tags' not in data:
-            raise serializers.ValidationError(
-                {'tags': 'Поле "tags" обязательно для обновления.'})
-        if 'ingredients' not in data:
-            raise serializers.ValidationError(
-                {'ingredients': 'Поле "ingredients" '
-                                'обязательно для обновления.'})
-        return super().to_internal_value(data)
+        return data
 
     def create_ingredients(self, recipe, ingredients):
         """Создает связи ингредиентов с рецептом."""
@@ -173,6 +166,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         ]
         RecipeIngredient.objects.bulk_create(objs)
 
+    @atomic
     def create(self, validated_data):
         """Создает новый рецепт."""
         ingredients = validated_data.pop('ingredients')
@@ -182,6 +176,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         self.create_ingredients(recipe, ingredients)
         return recipe
 
+    @atomic
     def update(self, instance, validated_data):
         """Обновляет существующий рецепт."""
         instance.name = validated_data.get('name', instance.name)
@@ -219,7 +214,7 @@ class RecipeReadSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     author = CustomUserSerializer(read_only=True)
     ingredients = IngredientInRecipeSerializer(many=True, read_only=True)
-    image = serializers.ImageField()
+    image = serializers.SerializerMethodField(read_only=True)
     is_in_shopping_cart = serializers.SerializerMethodField()
     is_favorited = serializers.SerializerMethodField()
 
@@ -228,6 +223,9 @@ class RecipeReadSerializer(serializers.ModelSerializer):
         fields = ('id', 'author', 'name', 'image', 'text',
                   'tags', 'ingredients', 'cooking_time',
                   'is_in_shopping_cart', 'is_favorited')
+
+    def get_image(self, obj):
+        return obj.image.url if obj.image else ""
 
     def get_is_in_shopping_cart(self, obj):
         """Проверяет, добавлен ли рецепт в корзину покупок."""

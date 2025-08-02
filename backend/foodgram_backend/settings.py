@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-PAGINATION_DEFAULT_LIMIT = 6
-PAGINATION_MAX_LIMIT = 100
+PAGINATION_PAGE_SIZE = 6
+PAGINATION_MAX_PAGE_SIZE = 100
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
