@@ -69,7 +69,9 @@ class Recipe(models.Model):
         related_name='recipes',
         verbose_name='Тег'
     )
-    cooking_time = models.IntegerField(
+    ingredients = models.ManyToManyField(
+        Ingredient, through='RecipeIngredient', related_name='recipes', verbose_name='Ингредиенты')
+    cooking_time = models.PositiveIntegerField(
         validators=[MinValueValidator(1)], verbose_name='Время приготовления')
     short_code = models.CharField(
         max_length=8, unique=True, blank=True, verbose_name='Код для ссылки')
@@ -92,7 +94,7 @@ class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='ingredients',
+        related_name='ingredient_relations',
         verbose_name='Рецепт'
     )
     ingredient = models.ForeignKey(
@@ -101,7 +103,7 @@ class RecipeIngredient(models.Model):
         related_name='used_in',
         verbose_name='Ингредиент',
     )
-    amount = models.IntegerField(verbose_name='Количество')
+    amount = models.PositiveIntegerField(validators=[MinValueValidator(1)],verbose_name='Количество')
 
     class Meta:
         constraints = [

@@ -142,7 +142,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         recipes = Recipe.objects.filter(shopping_cart__user=user)
         ingredient_totals = {}
         for recipe in recipes:
-            for ingredient in recipe.ingredients.all():
+            for ingredient in recipe.ingredient_relations.all():
                 key = (ingredient.ingredient.name,
                        ingredient.ingredient.measurement_unit.name)
                 if key in ingredient_totals:

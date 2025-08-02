@@ -110,10 +110,14 @@ class TagSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'slug')
 
 
-class RecipeIngredientWriteSerializer(serializers.Serializer):
+class RecipeIngredientWriteSerializer(serializers.ModelSerializer):
     """Сериализатор для записи ингредиентов в рецепте."""
-    id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
-    amount = serializers.IntegerField(min_value=1)
+    id = serializers.PrimaryKeyRelatedField(source='ingredient',
+                                            queryset=Ingredient.objects.all())
+
+    class Meta:
+        model = RecipeIngredient
+        fields = ('id', 'amount')
 
 
 class RecipeWriteSerializer(serializers.ModelSerializer):
@@ -146,11 +150,11 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'ingredients': 'Нужен хотя бы один ингредиент'})
         seen = set()
         for item in ingredients:
-            if item['id'] in seen:
+            if item['ingredient'] in seen:
                 raise serializers.ValidationError(
                     {'ingredients': 'Ингредиенты не должны повторяться'}
                 )
-            seen.add(item['id'])
+            seen.add(item['ingredient'])
 
         return data
 
@@ -159,7 +163,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         objs = [
             RecipeIngredient(
                 recipe=recipe,
-                ingredient=ingredient_data['id'],
+                ingredient=ingredient_data['ingredient'],
                 amount=ingredient_data['amount']
             )
             for ingredient_data in ingredients
@@ -171,6 +175,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         """Создает новый рецепт."""
         ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
+        validated_data['author'] = self.context['request'].user
         recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags)
         self.create_ingredients(recipe, ingredients)
@@ -179,26 +184,19 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     @atomic
     def update(self, instance, validated_data):
         """Обновляет существующий рецепт."""
-        instance.name = validated_data.get('name', instance.name)
-        instance.text = validated_data.get('text', instance.text)
-        instance.cooking_time = validated_data.get(
-            'cooking_time', instance.cooking_time)
-        instance.image = validated_data.get('image', instance.image)
-
-        tags = validated_data.pop('tags')
-        instance.tags.set(tags)
-
-        ingredients = validated_data.pop('ingredients')
-        instance.ingredients.all().delete()
-        self.create_ingredients(instance, ingredients)
-
-        instance.save()
-        return instance
+        tags = validated_data.pop('tags', None)
+        ingredients = validated_data.pop('ingredients', None)
+        if tags is not None:
+            instance.tags.set(tags)
+        if ingredients is not None:
+            instance.ingredients.clear()
+            self.create_ingredients(instance, ingredients)
+        return super().update(instance, validated_data)
 
 
 class IngredientInRecipeSerializer(serializers.ModelSerializer):
     """Сериализатор для отображения ингредиентов в рецепте."""
-    id = serializers.ReadOnlyField(source='ingredient.id')
+    id = serializers.IntegerField(source='ingredient.id')
     name = serializers.ReadOnlyField(source='ingredient.name')
     measurement_unit = serializers.CharField(
         source='ingredient.measurement_unit.name')
@@ -213,7 +211,8 @@ class RecipeReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения рецептов."""
     tags = TagSerializer(many=True, read_only=True)
     author = CustomUserSerializer(read_only=True)
-    ingredients = IngredientInRecipeSerializer(many=True, read_only=True)
+    ingredients = IngredientInRecipeSerializer(
+        source='ingredient_relations',many=True, read_only=True)
     image = serializers.SerializerMethodField(read_only=True)
     is_in_shopping_cart = serializers.SerializerMethodField()
     is_favorited = serializers.SerializerMethodField()
