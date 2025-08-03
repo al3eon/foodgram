@@ -20,7 +20,7 @@ from api.permissions import IsAuthorOrReadOnly
 from api.serializers import (
     AvatarSerializer, CustomUserSerializer, IngredientSerializer,
     RecipeReadSerializer, RecipeWriteSerializer, ShortRecipeSerializer,
-    SubscriptionSerializer, TagSerializer, UserListSerializer,
+    SubscriptionSerializer, TagSerializer
 )
 from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag, RecipeIngredient
 from users.models import Subscription
@@ -58,15 +58,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return RecipeReadSerializer
         return RecipeWriteSerializer
 
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return (AllowAny(),)
-        if self.action in ['update', 'partial_update', 'destroy']:
-            return (IsAuthorOrReadOnly(),)
-        if self.action == 'create':
-            return (IsAuthenticated(),)
-        return super().get_permissions()
-
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
@@ -86,8 +77,16 @@ class RecipeViewSet(viewsets.ModelViewSet):
             )
         return queryset
 
+    def partial_update(self, request, *args, **kwargs):
+        if not self.get_object().author == request.user:
+            return Response({'detail': 'У вас нет прав на редактирование этого рецепта.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
     def destroy(self, request, *args, **kwargs):
         """Удаляет рецепт."""
+        if not self.get_object().author == request.user:
+            return Response({'detail': 'У вас нет прав на удаление этого рецепта.'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
     def _handle_user_recipe_action(self, request, model, serializer_class,
@@ -169,8 +168,6 @@ class CustomUserViewSet(UserViewSet):
     pagination_class = RecipePagePagination
 
     def get_serializer_class(self):
-        if self.action == 'list':
-            return UserListSerializer
         if self.action == 'avatar':
             return AvatarSerializer
         return super().get_serializer_class()
