@@ -1,12 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.db.transaction import atomic
-from django.db.models import Exists, OuterRef, Value
-from django.db.models.fields import BooleanField
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
-from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
-                            ShoppingCart, Tag)
+from recipes.models import (Ingredient, Recipe, RecipeIngredient, Tag)
 from users.models import Subscription
 
 User = get_user_model()
@@ -156,7 +153,8 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """Возвращает данные рецепта в формате RecipeReadSerializer."""
         user = self.context['request'].user
-        annotated_recipe = Recipe.objects.with_user_annotations(user).get(pk=instance.pk)
+        annotated_recipe = Recipe.objects.with_user_annotations(
+            user).get(pk=instance.pk)
         return RecipeReadSerializer(
             annotated_recipe, context=self.context).data
 
@@ -180,8 +178,9 @@ class RecipeReadSerializer(serializers.ModelSerializer):
     ingredients = IngredientInRecipeSerializer(
         source='ingredient_relations', many=True, read_only=True)
     image = serializers.SerializerMethodField(read_only=True)
-    is_in_shopping_cart = serializers.BooleanField(read_only=True)
-    is_favorited = serializers.BooleanField(read_only=True)
+    is_in_shopping_cart = serializers.BooleanField(
+        read_only=True, default=False)
+    is_favorited = serializers.BooleanField(read_only=True, default=False)
 
     class Meta:
         model = Recipe

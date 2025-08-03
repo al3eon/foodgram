@@ -132,7 +132,6 @@ class Recipe(models.Model):
     short_code = models.CharField(
         max_length=SHORT_CODE_MAX_LENGTH,
         unique=True,
-        blank=True,
         verbose_name='Код для ссылки'
     )
     pub_date = models.DateTimeField(

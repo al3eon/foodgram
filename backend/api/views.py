@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Exists, OuterRef, Sum, Value
-from django.db.models.fields import BooleanField
+from django.db.models import Sum
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
@@ -13,6 +12,7 @@ from rest_framework.response import Response
 
 from api.filters import IngredientFilter, RecipeFilter
 from api.pagination import RecipePagePagination
+from api.permissions import IsAuthorOrReadOnly
 from api.serializers import (
     AvatarSerializer, IngredientSerializer, ProfileSerializer,
     RecipeReadSerializer, RecipeWriteSerializer, ShortRecipeSerializer,
@@ -48,7 +48,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     pagination_class = RecipePagePagination
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
 
@@ -60,23 +60,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         return Recipe.objects.with_user_annotations(user)
-
-    def partial_update(self, request, *args, **kwargs):
-        if not self.get_object().author == request.user:
-            return Response(
-                {'detail': 'У вас нет прав на редактирование этого рецепта.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        return super().partial_update(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        """Удаляет рецепт."""
-        if not self.get_object().author == request.user:
-            return Response(
-                {'detail': 'У вас нет прав на удаление этого рецепта.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        return super().destroy(request, *args, **kwargs)
 
     def _handle_user_recipe_action(self, request, model, serializer_class,
                                    error_exists, error_not_exists):
@@ -165,18 +148,18 @@ class ProfileViewSet(UserViewSet):
     serializer_class = ProfileSerializer
     pagination_class = RecipePagePagination
 
-    def get_serializer_class(self):
-        if self.action == 'avatar':
-            return AvatarSerializer
-        return super().get_serializer_class()
-
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
             return [AllowAny(), ]
         return super().get_permissions()
 
-    @action(detail=False, methods=['put'],
-            permission_classes=[IsAuthenticated])
+    @action(
+        detail=False,
+        methods=['put'],
+        permission_classes=[IsAuthenticated],
+        url_path='me/avatar',
+        serializer_class=AvatarSerializer
+    )
     def avatar(self, request):
         """Обновляет аватар пользователя"""
         serializer = self.get_serializer(
