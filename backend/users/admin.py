@@ -36,5 +36,5 @@ class SubscriptionAdmin(admin.ModelAdmin):
     list_filter = ('user', 'author')
     list_per_page = 20
 
-admin.site.unregister(Group)
 
+admin.site.unregister(Group)

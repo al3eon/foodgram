@@ -1,8 +1,5 @@
-import base64
-
 from django.contrib.auth import get_user_model
-from django.core.files.base import ContentFile
-from django.db.models import Exists, OuterRef, Value, Sum
+from django.db.models import Exists, OuterRef, Sum, Value
 from django.db.models.fields import BooleanField
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -16,13 +13,15 @@ from rest_framework.response import Response
 
 from api.filters import IngredientFilter, RecipeFilter
 from api.pagination import RecipePagePagination
-from api.permissions import IsAuthorOrReadOnly
 from api.serializers import (
-    AvatarSerializer, CustomUserSerializer, IngredientSerializer,
+    AvatarSerializer, IngredientSerializer, ProfileSerializer,
     RecipeReadSerializer, RecipeWriteSerializer, ShortRecipeSerializer,
     SubscriptionSerializer, TagSerializer
 )
-from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag, RecipeIngredient
+from recipes.models import (
+    Favorite, Ingredient, Recipe,
+    RecipeIngredient, ShoppingCart, Tag
+)
 from users.models import Subscription
 
 User = get_user_model()
@@ -67,7 +66,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     Favorite.objects.filter(user=user, recipe=OuterRef('pk'))
                 ),
                 is_in_shopping_cart=Exists(
-                    ShoppingCart.objects.filter(user=user, recipe=OuterRef('pk'))
+                    ShoppingCart.objects.filter(
+                        user=user, recipe=OuterRef('pk'))
                 )
             )
         else:
@@ -79,14 +79,19 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         if not self.get_object().author == request.user:
-            return Response({'detail': 'У вас нет прав на редактирование этого рецепта.'},
-                            status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {'detail': 'У вас нет прав на редактирование этого рецепта.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         return super().partial_update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         """Удаляет рецепт."""
         if not self.get_object().author == request.user:
-            return Response({'detail': 'У вас нет прав на удаление этого рецепта.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {'detail': 'У вас нет прав на удаление этого рецепта.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         return super().destroy(request, *args, **kwargs)
 
     def _handle_user_recipe_action(self, request, model, serializer_class,
@@ -96,15 +101,22 @@ class RecipeViewSet(viewsets.ModelViewSet):
         user = request.user
 
         if request.method == 'POST':
-            instance, created = model.objects.get_or_create(user=user, recipe=recipe)
+            instance, created = model.objects.get_or_create(
+                user=user, recipe=recipe)
             if not created:
-                return Response({'errors': error_exists}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {'errors': error_exists},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             serializer = serializer_class(recipe, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         deleted, _ = model.objects.filter(user=user, recipe=recipe).delete()
         if not deleted:
-            return Response({'errors': error_not_exists}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'errors': error_not_exists},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post', 'delete'],
@@ -144,7 +156,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
 
         shopping_list = [
-            f"{item['ingredient__name']} ({item['ingredient__measurement_unit__name']}) — {item['total_amount']}"
+            (f"{item['ingredient__name']} ("
+             f"{item['ingredient__measurement_unit__name']}) — "
+             f"{item['total_amount']}")
             for item in ingredient_totals
         ]
 
@@ -162,9 +176,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response({'short-link': short_link}, status=status.HTTP_200_OK)
 
 
-class CustomUserViewSet(UserViewSet):
+class ProfileViewSet(UserViewSet):
     queryset = User.objects.all()
-    serializer_class = CustomUserSerializer
+    serializer_class = ProfileSerializer
     pagination_class = RecipePagePagination
 
     def get_serializer_class(self):
@@ -181,7 +195,8 @@ class CustomUserViewSet(UserViewSet):
             permission_classes=[IsAuthenticated])
     def avatar(self, request):
         """Обновляет аватар пользователя"""
-        serializer = self.get_serializer(request.user, data=request.data, context={'request': request})
+        serializer = self.get_serializer(
+            request.user, data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         avatar_url = request.user.avatar.url if request.user.avatar else None
@@ -209,7 +224,8 @@ class CustomUserViewSet(UserViewSet):
                     {'errors': 'Нельзя подписаться на себя'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            instance, created = Subscription.objects.get_or_create(user=user, author=author)
+            instance, created = Subscription.objects.get_or_create(
+                user=user, author=author)
             if not created:
                 return Response(
                     {'errors': 'Вы уже подписаны на этого пользователя'},
@@ -219,7 +235,8 @@ class CustomUserViewSet(UserViewSet):
                 author, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        deleted, _ = Subscription.objects.filter(user=user, author=author).delete()
+        deleted, _ = Subscription.objects.filter(
+            user=user, author=author).delete()
         if not deleted:
             return Response(
                 {'errors': 'Вы не подписаны на этого пользователя'},

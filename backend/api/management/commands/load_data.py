@@ -18,7 +18,7 @@ class Command(BaseCommand):
             data = json.load(f)
             self.load_users(data['users'])
             self.load_units(data['units'])
-            self.load_ingredients(data['ingredients'])
+            self.load_ingredients(data['ingredients'], data['units'])
             self.load_tags(data['tags'])
             self.load_recipes(data['recipes'])
 
@@ -40,12 +40,18 @@ class Command(BaseCommand):
         for unit in units:
             Unit.objects.get_or_create(name=unit['name'])
 
-    def load_ingredients(self, ingredients):
-        for ingredient in ingredients:
-            unit, _ = Unit.objects.get_or_create(
-                name=ingredient['measurement_unit'])
-            Ingredient.objects.get_or_create(
-                name=ingredient['name'], measurement_unit=unit)
+    def load_ingredients(self, ingredients, units_data):
+        units = {unit['name']: Unit.objects.get_or_create(name=unit['name'])[0]
+                 for unit in units_data}
+        ingredient_objects = [
+            Ingredient(
+                name=ingredient['name'],
+                measurement_unit=units[ingredient['measurement_unit']]
+            )
+            for ingredient in ingredients
+        ]
+        Ingredient.objects.bulk_create(
+            ingredient_objects, ignore_conflicts=True)
 
     def load_tags(self, tags):
         for tag in tags:

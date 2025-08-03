@@ -3,6 +3,7 @@ from django.views import View
 
 from .models import Recipe
 
+
 class ShortLinkRedirectView(View):
     def get(self, request, short_code):
         try:
