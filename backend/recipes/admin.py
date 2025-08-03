@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Count
 
 from .models import (Favorite, Ingredient, Recipe, RecipeIngredient,
                      ShoppingCart, Tag, Unit)
@@ -7,6 +8,7 @@ from .models import (Favorite, Ingredient, Recipe, RecipeIngredient,
 class RecipeIngredientInline(admin.TabularInline):
     model = RecipeIngredient
     extra = 1
+    min_num = 1
     raw_id_fields = ('ingredient',)
 
 
@@ -17,12 +19,18 @@ class RecipeAdmin(admin.ModelAdmin):
     list_filter = ('tags', 'author')
     list_per_page = 20
     raw_id_fields = ('author',)
-    filter_horizontal = ('tags',)  # Убрали 'ingredients'
+    filter_horizontal = ('tags',)
     inlines = [RecipeIngredientInline]
 
+    def get_queryset(self, request):
+        """Аннотирует queryset количеством добавлений в избранное."""
+        return super().get_queryset(request).annotate(
+            favorite_count=Count('favorites')
+        )
+
+    @admin.display(description='Добавлено в избранное')
     def favorite_count(self, obj):
-        return obj.favorites.count()
-    favorite_count.short_description = 'Добавлено в избранное'
+        return obj.favorite_count
 
 
 @admin.register(Ingredient)
