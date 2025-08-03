@@ -3,6 +3,7 @@ import uuid
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Exists, OuterRef, BooleanField, Value, Manager
 
 from .constants import (
     INGREDIENT_NAME_MAX_LENGTH, NAME_STR_LIMIT, RECIPE_NAME_MAX_LENGTH,
@@ -77,6 +78,24 @@ class Ingredient(models.Model):
         return f'{self.name} ({self.measurement_unit.name})'
 
 
+class RecipeManager(Manager):
+    def with_user_annotations(self, user):
+        """Добавляет аннотации is_favorited и is_in_shopping_cart к queryset."""
+        if user.is_authenticated:
+            return self.get_queryset().annotate(
+                is_favorited=Exists(
+                    Favorite.objects.filter(user=user, recipe=OuterRef('pk'))
+                ),
+                is_in_shopping_cart=Exists(
+                    ShoppingCart.objects.filter(user=user, recipe=OuterRef('pk'))
+                )
+            )
+        return self.get_queryset().annotate(
+            is_favorited=Value(False, output_field=BooleanField()),
+            is_in_shopping_cart=Value(False, output_field=BooleanField())
+        )
+
+
 class Recipe(models.Model):
     author = models.ForeignKey(
         User,
@@ -120,6 +139,8 @@ class Recipe(models.Model):
         auto_now_add=True,
         verbose_name='Дата публикации'
     )
+
+    objects = RecipeManager()
 
     class Meta:
         ordering = ['-pub_date']

@@ -30,26 +30,15 @@ class ProfileSerializer(serializers.ModelSerializer):
             'email', 'id', 'username', 'first_name',
             'last_name', 'is_subscribed', 'avatar'
         )
-        extra_kwargs = {
-            'password': {'write_only': True},
-            'email': {'required': True},
-            'username': {'required': True},
-            'first_name': {'required': True},
-            'last_name': {'required': True}
-        }
 
     def get_is_subscribed(self, obj):
         """Проверяет, подписан ли текущий пользователь на объект."""
         request = self.context.get('request')
         return (request is not None
-                and not request.user.is_anonymous
+                and request.user.is_authenticated
                 and obj is not None
                 and Subscription.objects.filter(
                     user=request.user, author=obj).exists())
-
-    def create(self, validated_data):
-        """Создает нового пользователя."""
-        return User.objects.create_user(**validated_data)
 
 
 class AvatarSerializer(serializers.ModelSerializer):
@@ -99,10 +88,6 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Проверяет наличие и уникальность тегов и ингредиентов."""
-        if not data.get('image'):
-            raise serializers.ValidationError(
-                {'image': 'Поле image не может быть пустым'})
-
         tags = data.get('tags')
         ingredients = data.get('ingredients')
 
@@ -126,6 +111,13 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
             seen.add(item['ingredient'])
 
         return data
+
+    def validate_image(self, value):
+        """Проверяет наличие изображения"""
+        if not value:
+            raise serializers.ValidationError(
+                {'image': 'Поле image не может быть пустым'})
+        return value
 
     def create_ingredients(self, recipe, ingredients):
         """Создает связи ингредиентов с рецептом."""
@@ -155,34 +147,16 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         """Обновляет существующий рецепт."""
         tags = validated_data.pop('tags', None)
         ingredients = validated_data.pop('ingredients', None)
-        if tags is not None:
-            instance.tags.set(tags)
-        if ingredients is not None:
-            instance.ingredients.clear()
-            self.create_ingredients(instance, ingredients)
+        instance.tags.set(tags)
+        instance.ingredients.clear()
+        self.create_ingredients(instance, ingredients)
         validated_data['author'] = self.context['request'].user
         return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         """Возвращает данные рецепта в формате RecipeReadSerializer."""
         user = self.context['request'].user
-        queryset = Recipe.objects.filter(pk=instance.pk)
-        if user.is_authenticated:
-            queryset = queryset.annotate(
-                is_favorited=Exists(
-                    Favorite.objects.filter(user=user, recipe=OuterRef('pk'))
-                ),
-                is_in_shopping_cart=Exists(
-                    ShoppingCart.objects.filter(
-                        user=user, recipe=OuterRef('pk'))
-                )
-            )
-        else:
-            queryset = queryset.annotate(
-                is_favorited=Value(False, output_field=BooleanField()),
-                is_in_shopping_cart=Value(False, output_field=BooleanField())
-            )
-        annotated_recipe = queryset.get()
+        annotated_recipe = Recipe.objects.with_user_annotations(user).get(pk=instance.pk)
         return RecipeReadSerializer(
             annotated_recipe, context=self.context).data
 
