@@ -80,14 +80,15 @@ class Ingredient(models.Model):
 
 class RecipeManager(Manager):
     def with_user_annotations(self, user):
-        """Добавляет аннотации is_favorited и is_in_shopping_cart к queryset."""
+        """Добавляет аннотации is_favorited, is_in_shopping_cart к queryset."""
         if user.is_authenticated:
             return self.get_queryset().annotate(
                 is_favorited=Exists(
                     Favorite.objects.filter(user=user, recipe=OuterRef('pk'))
                 ),
                 is_in_shopping_cart=Exists(
-                    ShoppingCart.objects.filter(user=user, recipe=OuterRef('pk'))
+                    ShoppingCart.objects.filter(user=user,
+                                                recipe=OuterRef('pk'))
                 )
             )
         return self.get_queryset().annotate(
