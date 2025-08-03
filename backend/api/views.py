@@ -2,7 +2,7 @@ import base64
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from django.db.models import Exists, OuterRef, Value
+from django.db.models import Exists, OuterRef, Value, Sum
 from django.db.models.fields import BooleanField
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -22,7 +22,7 @@ from api.serializers import (
     RecipeReadSerializer, RecipeWriteSerializer, ShortRecipeSerializer,
     SubscriptionSerializer, TagSerializer, UserListSerializer,
 )
-from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
+from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag, RecipeIngredient
 from users.models import Subscription
 
 User = get_user_model()
@@ -97,19 +97,15 @@ class RecipeViewSet(viewsets.ModelViewSet):
         user = request.user
 
         if request.method == 'POST':
-            if model.objects.filter(user=user, recipe=recipe).exists():
-                return Response({'errors': error_exists},
-                                status=status.HTTP_400_BAD_REQUEST)
-            model.objects.create(user=user, recipe=recipe)
-            serializer = serializer_class(
-                recipe, context={'request': request})
+            instance, created = model.objects.get_or_create(user=user, recipe=recipe)
+            if not created:
+                return Response({'errors': error_exists}, status=status.HTTP_400_BAD_REQUEST)
+            serializer = serializer_class(recipe, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        instance = model.objects.filter(user=user, recipe=recipe)
-        if not instance.exists():
-            return Response({'errors': error_not_exists},
-                            status=status.HTTP_400_BAD_REQUEST)
-        instance.delete()
+        deleted, _ = model.objects.filter(user=user, recipe=recipe).delete()
+        if not deleted:
+            return Response({'errors': error_not_exists}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post', 'delete'],
@@ -140,22 +136,20 @@ class RecipeViewSet(viewsets.ModelViewSet):
             permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
         user = request.user
-        recipes = Recipe.objects.filter(shopping_cart__user=user)
-        ingredient_totals = {}
-        for recipe in recipes:
-            for ingredient in recipe.ingredient_relations.all():
-                key = (ingredient.ingredient.name,
-                       ingredient.ingredient.measurement_unit.name)
-                if key in ingredient_totals:
-                    ingredient_totals[key] += ingredient.amount
-                else:
-                    ingredient_totals[key] = ingredient.amount
+        ingredient_totals = (
+            RecipeIngredient.objects
+            .filter(recipe__shopping_cart__user=user)
+            .values('ingredient__name', 'ingredient__measurement_unit__name')
+            .annotate(total_amount=Sum('amount'))
+            .order_by('ingredient__name')
+        )
 
-        shopping_list = []
-        for (name, unit), amount in ingredient_totals.items():
-            shopping_list.append(f"{name} ({unit}) — {amount}")
+        shopping_list = [
+            f"{item['ingredient__name']} ({item['ingredient__measurement_unit__name']}) — {item['total_amount']}"
+            for item in ingredient_totals
+        ]
 
-        content = "\n".join(shopping_list)
+        content = '\n'.join(shopping_list)
         response = HttpResponse(content, content_type='text/plain')
         response['Content-Disposition'] = ('attachment; '
                                            'filename="shopping_list.txt"')
@@ -165,9 +159,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
             permission_classes=[AllowAny], url_path='get-link')
     def get_link(self, request, pk=None):
         recipe = self.get_object()
-        short_link = (f"{request.scheme}://{request.get_host()}"
-                      f"/r/{recipe.short_code}")
-        return Response({"short-link": short_link}, status=status.HTTP_200_OK)
+        short_link = request.build_absolute_uri(f'/r/{recipe.short_code}')
+        return Response({'short-link': short_link}, status=status.HTTP_200_OK)
 
 
 class CustomUserViewSet(UserViewSet):
