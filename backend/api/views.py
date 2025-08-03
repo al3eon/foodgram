@@ -171,6 +171,8 @@ class CustomUserViewSet(UserViewSet):
     def get_serializer_class(self):
         if self.action == 'list':
             return UserListSerializer
+        if self.action == 'avatar':
+            return AvatarSerializer
         return super().get_serializer_class()
 
     def get_permissions(self):
@@ -181,40 +183,12 @@ class CustomUserViewSet(UserViewSet):
     @action(detail=False, methods=['put'],
             permission_classes=[IsAuthenticated])
     def avatar(self, request):
-        if 'avatar' not in request.data and 'avatar' not in request.FILES:
-            return Response(
-                {'avatar': 'Это поле обязательно.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        file = next(iter(request.FILES.values()), None)
-        if file:
-            data = {'avatar_input': file}
-        else:
-            if 'avatar' in request.data:
-                file_data = request.data['avatar']
-                if (isinstance(file_data, str)
-                        and file_data.startswith('data:image')):
-                    header, data = file_data.split(';base64,')
-                    image_format = header.split('/')[-1]
-                    if image_format not in ['png', 'jpeg', 'jpg']:
-                        message = ('Неподдерживаемый формат. '
-                                   'Используйте jpg или png')
-                        return Response({'avatar': message},
-                                        status=status.HTTP_400_BAD_REQUEST)
-                    decoded_file = base64.b64decode(data)
-                    filename = f'avatar_{request.user.id}.{image_format}'
-                    file = ContentFile(decoded_file, name=filename)
-                    data = {'avatar_input': file}
-
-        serializer = AvatarSerializer(
-            request.user, data=data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
-            avatar_url = (request.user.avatar.url
-                          if request.user.avatar else None)
-            return Response(
-                {'avatar': avatar_url}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        """Обновляет аватар пользователя"""
+        serializer = self.get_serializer(request.user, data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        avatar_url = request.user.avatar.url if request.user.avatar else None
+        return Response({'avatar': avatar_url}, status=status.HTTP_200_OK)
 
     @avatar.mapping.delete
     def delete_avatar(self, request):
@@ -232,33 +206,29 @@ class CustomUserViewSet(UserViewSet):
         user = request.user
         author = self.get_object()
 
-        if user == author:
-            return Response(
-                {'errors': 'Нельзя подписаться на себя'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         if request.method == 'POST':
-            if Subscription.objects.filter(user=user, author=author).exists():
+            if user == author:
+                return Response(
+                    {'errors': 'Нельзя подписаться на себя'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            instance, created = Subscription.objects.get_or_create(user=user, author=author)
+            if not created:
                 return Response(
                     {'errors': 'Вы уже подписаны на этого пользователя'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            Subscription.objects.create(user=user, author=author)
             serializer = SubscriptionSerializer(
                 author, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        if request.method == 'DELETE':
-            subscription = Subscription.objects.filter(
-                user=user, author=author)
-            if not subscription.exists():
-                return Response(
-                    {'errors': 'Вы не подписаны на этого пользователя'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            subscription.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+        deleted, _ = Subscription.objects.filter(user=user, author=author).delete()
+        if not deleted:
+            return Response(
+                {'errors': 'Вы не подписаны на этого пользователя'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['get'],
             permission_classes=[IsAuthenticated])

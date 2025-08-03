@@ -80,28 +80,17 @@ class CustomUserSerializer(IsSubscribedMixin, UserSerializer):
 class AvatarSerializer(serializers.ModelSerializer):
     """Сериализатор для аватара."""
     avatar = Base64ImageField(write_only=True, required=False, allow_null=True)
-    avatar_input = serializers.ImageField(
-        write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = User
-        fields = ('avatar', 'avatar_input')
+        fields = ('avatar',)
 
-    def validate_avatar_input(self, value):
-        if not value:
-            raise serializers.ValidationError('Файл отсутствует.')
-        valid_extensions = ['.png', '.jpg', '.jpeg']
-        ext = os.path.splitext(value.name)[1].lower()
-        if ext not in valid_extensions:
-            raise serializers.ValidationError('Неподдерживаемый формат. '
-                                              'Используйте PNG или JPEG')
-        return value
-
-    def update(self, instance, validated_data):
-        if 'avatar_input' in validated_data and validated_data['avatar_input']:
-            instance.avatar = validated_data['avatar_input']
-            instance.save()
-        return instance
+    def validate(self, attrs):
+        if 'avatar' not in attrs or attrs.get('avatar') in [None, '']:
+            raise serializers.ValidationError({
+                'avatar': 'Это поле обязательно для обновления аватара.'
+            })
+        return attrs
 
 
 class TagSerializer(serializers.ModelSerializer):
