@@ -1,11 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from .constants import LIMIT_EMAIL, LIMIT_USERNAME, OUTPUT_LENGTH
 from .validators import username_validator
-
-LIMIT_EMAIL = 254
-LIMIT_USERNAME = 150
-OUTPUT_LENGTH = 30
 
 
 class User(AbstractUser):
@@ -16,8 +13,6 @@ class User(AbstractUser):
             'unique': 'Пользователь с таким email уже существует!',
         },
         verbose_name='Электронная почта',
-        blank=False,
-        null=False,
     )
 
     username = models.CharField(
@@ -30,8 +25,6 @@ class User(AbstractUser):
             'unique': 'Пользователь с таким именем уже существует!',
         },
         verbose_name='Имя пользователя',
-        blank=False,
-        null=False,
     )
     first_name = models.CharField(
         verbose_name='Имя',
@@ -54,7 +47,7 @@ class User(AbstractUser):
     )
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
 
     class Meta:
         verbose_name = 'пользователь'

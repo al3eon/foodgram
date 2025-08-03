@@ -1,11 +1,12 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.contrib.auth.models import Group
 
 from .models import Subscription, User
 
 
 @admin.register(User)
-class UserAdmin(UserAdmin):
+class UserAdmin(DjangoUserAdmin):
     list_display = (
         'username', 'email', 'first_name', 'last_name', 'is_active')
     search_fields = ('email', 'username')
@@ -34,3 +35,6 @@ class SubscriptionAdmin(admin.ModelAdmin):
         'user__username', 'user__email', 'author__username', 'author__email')
     list_filter = ('user', 'author')
     list_per_page = 20
+
+admin.site.unregister(Group)
+
