@@ -2,8 +2,9 @@ import os
 
 from django.contrib.auth import get_user_model
 from django.db.transaction import atomic
-from djoser.serializers import (SetPasswordSerializer, UserCreateSerializer,
-                                UserSerializer)
+from django.db.models import Exists, OuterRef, Value
+from django.db.models.fields import BooleanField
+from djoser.serializers import (UserCreateSerializer, UserSerializer)
 from drf_extra_fields.fields import Base64ImageField
 from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
                             ShoppingCart, Tag)
@@ -191,7 +192,29 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         if ingredients is not None:
             instance.ingredients.clear()
             self.create_ingredients(instance, ingredients)
+        validated_data['author'] = self.context['request'].user
         return super().update(instance, validated_data)
+
+    def to_representation(self, instance):
+        """Возвращает данные рецепта в формате RecipeReadSerializer."""
+        user = self.context['request'].user
+        queryset = Recipe.objects.filter(pk=instance.pk)
+        if user.is_authenticated:
+            queryset = queryset.annotate(
+                is_favorited=Exists(
+                    Favorite.objects.filter(user=user, recipe=OuterRef('pk'))
+                ),
+                is_in_shopping_cart=Exists(
+                    ShoppingCart.objects.filter(user=user, recipe=OuterRef('pk'))
+                )
+            )
+        else:
+            queryset = queryset.annotate(
+                is_favorited=Value(False, output_field=BooleanField()),
+                is_in_shopping_cart=Value(False, output_field=BooleanField())
+            )
+        annotated_recipe = queryset.get()
+        return RecipeReadSerializer(annotated_recipe, context=self.context).data
 
 
 class IngredientInRecipeSerializer(serializers.ModelSerializer):

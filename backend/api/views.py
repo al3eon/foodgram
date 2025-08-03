@@ -4,8 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.db.models import Exists, OuterRef, Value
 from django.db.models.fields import BooleanField
-from django.http import HttpResponse, HttpResponseRedirect
-from django.views import View
+from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
 from rest_framework import status, viewsets
@@ -87,28 +86,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
             )
         return queryset
 
-    def _save_and_respond(self, serializer, request, status_code):
-        """Сохраняет рецепт и возвращает ответ RecipeReadSerializer."""
-        recipe = serializer.save()
-        annotated_recipe = self.get_queryset().get(pk=recipe.pk)
-        response_serializer = RecipeReadSerializer(
-            annotated_recipe, context={'request': request})
-        return Response(response_serializer.data, status=status_code)
-
-    def create(self, request, *args, **kwargs):
-        """Создает новый рецепт."""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.validated_data['author'] = request.user
-        return self._save_and_respond(
-            serializer, request, status.HTTP_201_CREATED)
-
-    def update(self, request, *args, **kwargs):
-        """Обновляет существующий рецепт."""
-        serializer = self.get_serializer(
-            self.get_object(), data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        return self._save_and_respond(serializer, request, status.HTTP_200_OK)
+    def destroy(self, request, *args, **kwargs):
+        """Удаляет рецепт."""
+        return super().destroy(request, *args, **kwargs)
 
     def _handle_user_recipe_action(self, request, model, serializer_class,
                                    error_exists, error_not_exists):
